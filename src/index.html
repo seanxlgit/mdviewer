@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown Viewer</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Markdown Viewer</h1>
+      <button id="theme-btn" class="btn btn-text" title="Toggle theme">
+        <svg id="theme-icon-light" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/>
+          <line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/>
+          <line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <svg id="theme-icon-dark" class="hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+    </header>
+
+    <main>
+      <div id="drop-zone" class="drop-zone">
+        <div class="drop-zone-content">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <line x1="9" y1="15" x2="12" y2="12"/>
+            <line x1="15" y1="15" x2="12" y2="12"/>
+          </svg>
+          <p>Drop a markdown file here</p>
+          <span>or</span>
+          <button id="open-btn" class="btn">Open File</button>
+        </div>
+      </div>
+
+      <div id="viewer" class="viewer hidden">
+        <div class="viewer-header">
+          <span id="file-name" class="file-name">filename.md</span>
+          <button id="close-btn" class="btn btn-text" title="Close">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <article id="content" class="content"></article>
+      </div>
+
+      <div id="status" class="status hidden"></div>
+    </main>
+  </div>
+
+  <input type="file" id="file-input" accept=".md,.markdown,.txt" hidden>
+
+  <script type="module">
+    import { renderMarkdown, initDeps } from './markdown.js';
+
+    const dropZone = document.getElementById('drop-zone');
+    const viewer = document.getElementById('viewer');
+    const content = document.getElementById('content');
+    const fileInput = document.getElementById('file-input');
+    const fileName = document.getElementById('file-name');
+    const openBtn = document.getElementById('open-btn');
+    const closeBtn = document.getElementById('close-btn');
+    const status = document.getElementById('status');
+    const themeBtn = document.getElementById('theme-btn');
+    const themeIconLight = document.getElementById('theme-icon-light');
+    const themeIconDark = document.getElementById('theme-icon-dark');
+
+    // Preload dependencies when page loads
+    initDeps().then(() => {
+      console.log('Dependencies loaded');
+    }).catch(err => {
+      console.error('Failed to load dependencies:', err);
+    });
+
+    // Theme handling
+    function setTheme(dark) {
+      document.body.classList.toggle('dark', dark);
+      themeIconLight.classList.toggle('hidden', dark);
+      themeIconDark.classList.toggle('hidden', !dark);
+      localStorage.setItem('mdviewer-theme', dark ? 'dark' : 'light');
+    }
+
+    function initTheme() {
+      const saved = localStorage.getItem('mdviewer-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = saved ? saved === 'dark' : prefersDark;
+      setTheme(isDark);
+    }
+
+    initTheme();
+    themeBtn.addEventListener('click', () => setTheme(!document.body.classList.contains('dark')));
+
+    function showViewer() {
+      dropZone.classList.add('hidden');
+      viewer.classList.remove('hidden');
+    }
+
+    function showDropZone() {
+      dropZone.classList.remove('hidden');
+      viewer.classList.add('hidden');
+      content.innerHTML = '';
+    }
+
+    function showStatus(msg) {
+      status.textContent = msg;
+      status.classList.remove('hidden');
+    }
+
+    function hideStatus() {
+      status.classList.add('hidden');
+    }
+
+    async function loadFile(file) {
+      if (!file) return;
+
+      const text = await file.text();
+      fileName.textContent = file.name;
+      showViewer();
+
+      showStatus('Rendering...');
+
+      try {
+        const html = await renderMarkdown(text);
+        hideStatus();
+        content.innerHTML = html;
+      } catch (err) {
+        console.error('Render error:', err);
+        hideStatus();
+        content.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+      }
+    }
+
+    // Drag and drop
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('drag-over');
+    });
+
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      loadFile(file);
+    });
+
+    // File picker
+    openBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', e => {
+      loadFile(e.target.files[0]);
+    });
+
+    // Close button
+    closeBtn.addEventListener('click', () => {
+      fileInput.value = '';
+      showDropZone();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Server/build artifacts
+__pycache__/
+*.pyc
+serve.py
+.env
+
+# Editor
+.DS_Store
+*.swp
+
+# Test files
+test-math.md
+test.md
