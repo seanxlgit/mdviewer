@@ -2,6 +2,8 @@
 
 A lightweight, browser-based markdown viewer with GitHub Flavored Markdown support, syntax highlighting, and LaTeX math rendering.
 
+![mdviewer GUI](mdviewer_GUI.png)
+
 ## Features
 
 - **Drag & drop** — drop any `.md` file directly into the viewer
