@@ -1,7 +1,6 @@
 # Server/build artifacts
 __pycache__/
 *.pyc
-serve.py
 .env
 
 # Editor
